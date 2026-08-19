@@ -9,6 +9,7 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { Employee } from '../../models/employee.model';
 import { Salary, UpdateSalaryRequest } from '../../models/salary.model';
+import { toLocalDateString } from '../../services/date.util';
 
 @Component({
   selector: 'app-salary-dialog',
@@ -39,9 +40,13 @@ import { Salary, UpdateSalaryRequest } from '../../models/salary.model';
 
       <mat-form-field appearance="outline" class="full-width">
         <mat-label>Effective Date</mat-label>
-        <input matInput [matDatepicker]="picker" [(ngModel)]="effectiveDate" required>
+        <input matInput [matDatepicker]="picker" [(ngModel)]="effectiveDate"
+               [min]="minEffectiveDate" required>
         <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
         <mat-datepicker #picker></mat-datepicker>
+        <mat-hint *ngIf="minEffectiveDate">
+          Must be after {{ data.currentSalary?.effectiveDate }}, the date the current salary took effect
+        </mat-hint>
       </mat-form-field>
 
       <mat-form-field appearance="outline" class="full-width">
@@ -71,6 +76,12 @@ export class SalaryDialogComponent {
   effectiveDate: Date;
   notes = '';
 
+  /**
+   * A new salary must take effect after the record it supersedes, which the backend
+   * enforces. Mirroring it in the picker stops the user hitting a server error.
+   */
+  minEffectiveDate: Date | null = null;
+
   constructor(
     public dialogRef: MatDialogRef<SalaryDialogComponent>,
     @Inject(MAT_DIALOG_DATA) public data: { employee: Employee; currentSalary: Salary | null }
@@ -78,7 +89,14 @@ export class SalaryDialogComponent {
     this.baseSalary = data.currentSalary?.baseSalary || 0;
     this.bonus = data.currentSalary?.bonus || 0;
     this.deductions = data.currentSalary?.deductions || 0;
-    this.effectiveDate = new Date();
+
+    if (data.currentSalary?.effectiveDate) {
+      const current = new Date(data.currentSalary.effectiveDate);
+      this.minEffectiveDate = new Date(current.getTime() + 24 * 60 * 60 * 1000);
+      this.effectiveDate = this.minEffectiveDate > new Date() ? this.minEffectiveDate : new Date();
+    } else {
+      this.effectiveDate = new Date();
+    }
   }
 
   onSubmit(): void {
@@ -86,7 +104,7 @@ export class SalaryDialogComponent {
       baseSalary: this.baseSalary,
       bonus: this.bonus,
       deductions: this.deductions,
-      effectiveDate: this.formatDate(this.effectiveDate),
+      effectiveDate: toLocalDateString(this.effectiveDate),
       notes: this.notes || undefined
     };
     this.dialogRef.close(result);
@@ -94,9 +112,5 @@ export class SalaryDialogComponent {
 
   onCancel(): void {
     this.dialogRef.close(null);
-  }
-
-  private formatDate(date: Date): string {
-    return date.toISOString().split('T')[0];
   }
 }

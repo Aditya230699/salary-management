@@ -12,7 +12,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { EmployeeService } from '../../services/employee.service';
 import { SalaryService } from '../../services/salary.service';
-import { Employee } from '../../models/employee.model';
+import { AuditLog, Employee } from '../../models/employee.model';
 import { Salary } from '../../models/salary.model';
 import { SalaryDialogComponent } from '../salary-dialog/salary-dialog.component';
 
@@ -139,6 +139,32 @@ import { SalaryDialogComponent } from '../salary-dialog/salary-dialog.component'
             <div *ngIf="salaryHistory.length === 0" class="no-data">No salary history</div>
           </mat-card>
         </mat-tab>
+
+        <mat-tab label="Audit Trail">
+          <mat-card>
+            <table mat-table [dataSource]="auditLogs" class="full-width" *ngIf="auditLogs.length > 0">
+              <ng-container matColumnDef="timestamp">
+                <th mat-header-cell *matHeaderCellDef>When</th>
+                <td mat-cell *matCellDef="let log">{{ log.timestamp | date:'short' }}</td>
+              </ng-container>
+              <ng-container matColumnDef="action">
+                <th mat-header-cell *matHeaderCellDef>Action</th>
+                <td mat-cell *matCellDef="let log">{{ log.action }}</td>
+              </ng-container>
+              <ng-container matColumnDef="details">
+                <th mat-header-cell *matHeaderCellDef>Details</th>
+                <td mat-cell *matCellDef="let log" class="audit-details">{{ log.details }}</td>
+              </ng-container>
+              <ng-container matColumnDef="performedBy">
+                <th mat-header-cell *matHeaderCellDef>By</th>
+                <td mat-cell *matCellDef="let log">{{ log.performedBy }}</td>
+              </ng-container>
+              <tr mat-header-row *matHeaderRowDef="auditColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: auditColumns"></tr>
+            </table>
+            <div *ngIf="auditLogs.length === 0" class="no-data">No recorded changes</div>
+          </mat-card>
+        </mat-tab>
       </mat-tab-group>
     </div>
 
@@ -155,6 +181,7 @@ import { SalaryDialogComponent } from '../salary-dialog/salary-dialog.component'
     .salary-value { font-size: 1.1rem; font-weight: 600; color: #3f51b5; }
     .net-salary { background: #f3f4ff; padding: 12px; margin: 8px -16px; border-radius: 4px; }
     .no-data { text-align: center; padding: 32px; color: #999; }
+    .audit-details { max-width: 460px; font-size: 0.85rem; color: #555; }
     .loading { display: flex; justify-content: center; padding: 48px; }
     .status-chip { padding: 4px 12px; border-radius: 12px; font-size: 0.8rem; font-weight: 500; }
     .status-active { background: #e8f5e9; color: #2e7d32; }
@@ -168,7 +195,9 @@ export class EmployeeDetailComponent implements OnInit {
   employee: Employee | null = null;
   currentSalary: Salary | null = null;
   salaryHistory: Salary[] = [];
+  auditLogs: AuditLog[] = [];
   salaryColumns = ['effectiveDate', 'endDate', 'baseSalary', 'bonus', 'netSalary', 'notes'];
+  auditColumns = ['timestamp', 'action', 'details', 'performedBy'];
 
   constructor(
     private route: ActivatedRoute,
@@ -183,6 +212,7 @@ export class EmployeeDetailComponent implements OnInit {
     const id = Number(this.route.snapshot.paramMap.get('id'));
     this.loadEmployee(id);
     this.loadSalary(id);
+    this.loadAuditTrail(id);
   }
 
   loadEmployee(id: number): void {
@@ -212,12 +242,23 @@ export class EmployeeDetailComponent implements OnInit {
           next: () => {
             this.snackBar.open('Salary updated successfully', 'Close', { duration: 3000 });
             this.loadSalary(this.employee!.id);
+            this.loadAuditTrail(this.employee!.id);
           },
-          error: () => {
-            this.snackBar.open('Failed to update salary', 'Close', { duration: 3000 });
+          error: (err) => {
+            // Surface the server's reason (for example an invalid effective date) rather
+            // than a generic failure the user cannot act on.
+            const message = err?.error?.message ?? 'Failed to update salary';
+            this.snackBar.open(message, 'Close', { duration: 6000 });
           }
         });
       }
+    });
+  }
+
+  loadAuditTrail(id: number): void {
+    this.employeeService.getAuditTrail(id).subscribe({
+      next: (page) => this.auditLogs = page.content,
+      error: () => this.auditLogs = []
     });
   }
 

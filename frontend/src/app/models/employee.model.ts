@@ -40,6 +40,15 @@ export interface UpdateEmployeeRequest {
   status?: string;
 }
 
+export interface AuditLog {
+  id: number;
+  employeeId: number;
+  action: string;
+  details: string;
+  performedBy: string;
+  timestamp: string;
+}
+
 export interface PageResponse<T> {
   content: T[];
   totalElements: number;

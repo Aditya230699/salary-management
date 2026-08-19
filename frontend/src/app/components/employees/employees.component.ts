@@ -158,7 +158,7 @@ import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
 export class EmployeesComponent implements OnInit {
   employees: Employee[] = [];
   departments: Department[] = [];
-  countries = ['India', 'USA', 'UK', 'Germany', 'Australia'];
+  countries: string[] = [];
   displayedColumns = ['employeeId', 'name', 'email', 'department', 'country', 'designation', 'salary', 'status'];
 
   loading = true;
@@ -191,6 +191,9 @@ export class EmployeesComponent implements OnInit {
 
   ngOnInit(): void {
     this.dashboardService.getDepartments().subscribe(depts => this.departments = depts);
+    // Sourced from the backend so the filter cannot drift from the countries the
+    // organisation actually operates in.
+    this.dashboardService.getCountries().subscribe(countries => this.countries = countries);
     this.loadEmployees();
   }
 

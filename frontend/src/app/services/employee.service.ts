@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { Employee, CreateEmployeeRequest, UpdateEmployeeRequest, PageResponse } from '../models/employee.model';
+import { AuditLog, Employee, CreateEmployeeRequest, UpdateEmployeeRequest, PageResponse } from '../models/employee.model';
 
 @Injectable({
   providedIn: 'root'
@@ -47,5 +47,10 @@ export class EmployeeService {
 
   updateEmployee(id: number, request: UpdateEmployeeRequest): Observable<Employee> {
     return this.http.put<Employee>(`${this.apiUrl}/${id}`, request);
+  }
+
+  getAuditTrail(id: number, page = 0, size = 20): Observable<PageResponse<AuditLog>> {
+    const params = new HttpParams().set('page', page).set('size', size);
+    return this.http.get<PageResponse<AuditLog>>(`${this.apiUrl}/${id}/audit`, { params });
   }
 }
