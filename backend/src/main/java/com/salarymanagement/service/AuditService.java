@@ -11,6 +11,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AuditService {
 
+    /** Caps how many audit rows one request can pull, so the endpoint cannot be used to dump the table. */
+    private static final int MAX_PAGE_SIZE = 100;
+
     private final AuditLogRepository auditLogRepository;
 
     public AuditService(AuditLogRepository auditLogRepository) {
@@ -30,7 +33,8 @@ public class AuditService {
 
     @Transactional(readOnly = true)
     public Page<AuditLog> getAuditLogs(Long employeeId, int page, int size) {
+        int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
         return auditLogRepository.findByEmployeeIdOrderByTimestampDesc(
-                employeeId, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "timestamp")));
+                employeeId, PageRequest.of(Math.max(page, 0), safeSize, Sort.by(Sort.Direction.DESC, "timestamp")));
     }
 }
