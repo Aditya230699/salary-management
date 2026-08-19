@@ -3,6 +3,11 @@ backend/target/
 backend/*.iml
 backend/.mvn/wrapper/maven-wrapper.jar
 
+# Local database files: these hold seeded salary data and must never be committed
+backend/data/
+*.mv.db
+*.trace.db
+
 # Frontend
 frontend/node_modules/
 frontend/dist/
