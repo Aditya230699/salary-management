@@ -13,67 +13,81 @@ Build a web-based salary management platform for ACME organization's HR team to 
 ### Core Features (In Scope)
 
 1. **Employee Management**
-   - View all employees with search, filter, and pagination
-   - View employee details (name, department, country, designation, join date)
-   - Add/edit/deactivate employees
+   - View all employees with search, filter (department, country, status), and pagination
+   - View employee details including current compensation
+   - Edit employee attributes, including status, which is how an employee is deactivated
 
 2. **Salary Management**
-   - View and update employee salary (base pay, bonuses, deductions)
-   - Track salary history with effective dates
-   - Multi-currency support based on employee country
+   - View and update salary (base pay, bonus, deductions)
+   - Dated salary history: each change supersedes the previous record rather than overwriting it
+   - Currency of record derived from the employee's country
 
-3. **Analytics & Reporting**
-   - Average salary by department, country, designation
-   - Salary distribution overview (min, max, median, percentiles)
+3. **Answering pay questions**
+   - Pay distribution per country: min, 25th percentile, median, 75th percentile, max, average, total payroll
+   - Narrowing to one country unlocks department and designation breakdowns for like-for-like comparison
    - Headcount by department and country
-   - Total compensation cost per department/country
 
-4. **Dashboard**
-   - Overview metrics (total employees, avg salary, total payroll cost)
-   - Quick filters by department, country, designation
+4. **Audit trail**
+   - Every employee and salary change records what changed, who changed it, and when
+   - Readable per employee through the API and the UI
 
 5. **Security**
-   - Authentication (login/logout)
-   - Role-based access (HR Manager role)
-   - Audit trail for salary changes
+   - Authentication with role-based access (HR Manager, Admin)
+   - See `SECURITY.md` for the full review, including accepted risks
 
 6. **Data Seeding**
-   - Seed script generating 10,000 realistic employees across 5+ countries
+   - Seed script generating 10,000 employees across 5 countries, reproducible via a fixed random seed
+
+### A deliberate decision on currency
+
+Salaries are held in local currency. An organisation-wide average across INR, USD, GBP,
+EUR and AUD is arithmetically valid and completely meaningless, and an HR manager would
+reasonably read it as real. So money is only ever reported within a single currency:
+per-country by default, and per-department or per-designation once the user narrows to one
+country. Cross-currency comparison would need agreed FX rates and an as-of date, which is
+a product decision rather than an implementation detail, so it is excluded rather than
+approximated.
 
 ### Deliberately Excluded (Out of Scope)
 
 | Feature | Reasoning |
 |---------|-----------|
-| Payroll processing/disbursement | Complex domain requiring payment gateway integration; beyond scope of management tool |
-| Tax calculations | Country-specific tax rules add significant complexity without demonstrating core engineering skills |
-| Employee self-service portal | Assessment focuses on HR Manager persona only |
+| Payroll processing/disbursement | Complex domain requiring payment gateway integration; beyond scope of a management tool |
+| Tax calculations | Country-specific rules add significant complexity without demonstrating core engineering skill |
+| FX conversion / normalised global pay figures | Requires agreed rates and an as-of date; reporting per currency is the honest alternative |
+| Employee self-service portal | Assessment focuses on the HR Manager persona only |
+| Create-employee UI | The API supports it and the seeder exercises it, but new employees realistically arrive from an onboarding system rather than being typed into a salary tool. Editing and deactivation, which the persona does need, are in the UI |
+| Approval workflows | Adds state-machine complexity; the HR Manager has direct edit rights |
 | Email notifications | Not core to the salary management problem |
-| File upload (Excel import/export) | While logical for migration, adds scope without demonstrating architecture |
-| Multi-tenancy | Single org requirement; no need for tenant isolation |
-| Approval workflows | Adds state machine complexity; HR Manager has direct edit access |
-| Real-time currency conversion | Static currency per country is sufficient for salary records |
+| Excel import/export | Logical for migration, but adds surface area without demonstrating architecture |
+| Multi-tenancy | Single organisation; no tenant isolation needed |
 
 ## Technical Architecture
 
-- **Backend**: Java 17 + Spring Boot 3 + Spring Security + JPA/Hibernate
-- **Database**: H2 (embedded, easy to run) with schema suitable for PostgreSQL migration
-- **Frontend**: Angular 17 + Angular Material
+- **Backend**: Java 17 + Spring Boot 3.4 + Spring Security + JPA/Hibernate
+- **Database**: H2 (file-based, zero install) with a schema that ports to PostgreSQL
+- **Frontend**: Angular 17 + Angular Material, standalone components with lazy routes
 - **Auth**: JWT-based stateless authentication
-- **API**: RESTful with proper HTTP semantics, pagination, error handling
+- **API**: REST with pagination, whitelisted sorting, structured error responses
 
 ## Non-Functional Requirements
 
-- Support 10,000 employee records with sub-second query response
-- Paginated API responses (default 20 per page)
-- Input validation on all endpoints
-- Parameterized queries (no SQL injection risk)
-- Proper error handling with meaningful messages
-- Clean separation of concerns (Controller → Service → Repository)
+- 10,000 employee records with sub-second query response (dashboard measured at ~130ms)
+- Paginated responses, default 20 and capped at 100 per page
+- Server-side validation on every endpoint
+- Parameterised queries only
+- Clean separation of concerns (Controller -> Service -> Repository)
 
 ## Success Criteria
 
-- HR Manager can log in, browse employees, update salaries, and view analytics
-- All CRUD operations work correctly
-- Unit tests cover core business logic
-- Application starts and seeds data without manual steps
-- Clean, incremental commit history showing development progression
+- HR Manager can log in, browse and filter employees, edit details, update salaries, and read pay distributions
+- Salary history stays coherent: no record can end before it begins
+- Unit tests cover the core business logic, including the percentile maths and the history rules
+- Application starts and seeds 10,000 employees with no manual steps
+- Commit history shows how the solution evolved
+
+## Known gaps
+
+- **Not deployed.** The assessment asks for deployed software; this runs locally via the
+  documented commands. Deployment target not yet chosen.
+- **No video demo yet.** Requested by the assessment and still outstanding.

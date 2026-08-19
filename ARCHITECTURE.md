@@ -45,9 +45,18 @@ Repository Layer (Data Access)
 ## Key Design Decisions
 
 ### 1. Salary History Pattern (Effective Dating)
-**Decision:** Each salary change creates a new record with `effectiveDate`. Previous record gets `endDate` set.
+**Decision:** Each salary change creates a new record with `effectiveDate`. The superseded record gets `endDate` set to the day before.
 
-**Reasoning:** This provides complete audit trail, supports "as of" queries, and avoids destructive updates. The HR domain requires knowing historical compensation for compliance and reporting.
+**Reasoning:** This provides a complete audit trail, supports "as of" queries, and avoids destructive updates. The HR domain requires knowing historical compensation for compliance and reporting.
+
+**Invariant that has to be enforced:** the new effective date must fall strictly after the record it supersedes. Without that check, back-dating a change closes the previous row at `effectiveDate - 1`, which can land *before* that row's own start, leaving a record that ends before it begins. The history then cannot be read back in order and "current salary" becomes ambiguous. This is enforced in `SalaryService` and mirrored in the date picker so the user does not have to discover it via a server error.
+
+### 1a. Money is only aggregated within a currency
+**Decision:** No organisation-wide pay figures. Statistics are grouped per country, and department/designation breakdowns only appear once the caller narrows to a single country.
+
+**Reasoning:** Salaries are stored in local currency. A mean over INR, USD, GBP, EUR and AUD is arithmetically computable and semantically meaningless, and the risk is not that it errors, it is that an HR manager reads it as real and makes a decision on it. Reporting per currency is honest; normalising would require agreed FX rates and an as-of date, which is a product decision the assessment does not settle.
+
+**Consequence:** the dashboard reports median and quartiles, not just an average. A mean hides skew from a handful of executive salaries, and "half the team earns below X" is the question a pay-equity conversation actually starts from.
 
 ### 2. Stateless JWT Authentication
 **Decision:** JWT tokens stored client-side, no server sessions.
@@ -74,23 +83,43 @@ Repository Layer (Data Access)
 
 **Reasoning:** Batch inserts avoid memory pressure. Fixed seed ensures reproducible data across runs (same employees every time), making demos and debugging consistent.
 
+### 7. Single source of truth for country and currency
+**Decision:** `CurrencyResolver` owns the country list and the country-to-currency mapping.
+
+**Reasoning:** That mapping was originally duplicated in the seeder, the dashboard aggregation, and a hardcoded array in the Angular filter. Adding a country meant three coordinated edits, and any drift between them produced wrong reports rather than an error. The frontend now fetches the list, so it cannot disagree with the backend.
+
 ## Performance Considerations
 
 - **Database indexes** on frequently filtered columns (email, department_id, country, status)
-- **Paginated queries** prevent full table scans for list views
-- **Lazy loading** of JPA relationships (no N+1 on list views)
-- **Batch inserts** for seeding (500 per batch)
-- **Angular lazy routes** for smaller initial bundle
+- **Paginated queries** prevent full table scans for list views, with page size capped at 100
+- **Lazy loading** of JPA relationships
+- **Batch inserts** for seeding (500 per batch, 10,000 employees in ~2 seconds)
+- **Angular lazy routes** for a smaller initial bundle
+- **Dashboard aggregation in one query.** The first implementation ran three aggregate
+  queries per department plus three per country, roughly 45 round trips to render one page.
+  It now pulls the in-force salary rows once and groups them in memory: 3 queries,
+  measured at ~130ms for 10,000 employees. At the stated organisation size the projection
+  is a small payload; an order of magnitude more data would push the grouping back into
+  SQL behind a materialised summary table.
+- **Derived view models computed once per load.** Binding Angular tables to method calls
+  rebuilt the arrays on every change detection pass and re-rendered continuously.
 
 ## Security Measures
 
-- BCrypt password hashing (cost factor 10)
-- JWT with HMAC-SHA256 signing
-- CORS whitelist (only Angular dev server)
-- Input validation on all endpoints (Jakarta Validation)
-- Parameterized JPQL queries (no SQL injection)
-- Role-based endpoint access
-- Audit logging for all salary changes
+Full review, including verified fixes and accepted risks, is in `SECURITY.md`. Summary:
+
+- BCrypt password hashing
+- JWT with HMAC-SHA256, signing key supplied via `JWT_SECRET`, startup refuses the
+  development key under the `prod` profile
+- All `/api/**` routes require the `HR_MANAGER` or `ADMIN` role; `anyRequest()` is
+  `denyAll()` so a new endpoint is closed until deliberately opened
+- H2 console disabled outside the `dev` profile
+- CORS published as a `CorsConfigurationSource` bean so the security chain applies it and
+  pre-flight `OPTIONS` is not rejected before reaching MVC
+- Bean Validation on every request body; sort fields whitelisted; page size clamped
+- Parameterised JPQL only
+- Error responses never leak SQL, class names, or paths; stack traces are logged instead
+- Audit trail on every employee and salary change, readable through the API
 
 ## Trade-offs Considered
 

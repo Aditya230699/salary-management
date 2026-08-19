@@ -15,6 +15,7 @@ import { SalaryService } from '../../services/salary.service';
 import { AuditLog, Employee } from '../../models/employee.model';
 import { Salary } from '../../models/salary.model';
 import { SalaryDialogComponent } from '../salary-dialog/salary-dialog.component';
+import { EmployeeDialogComponent } from '../employee-dialog/employee-dialog.component';
 
 @Component({
   selector: 'app-employee-detail',
@@ -33,6 +34,10 @@ import { SalaryDialogComponent } from '../salary-dialog/salary-dialog.component'
         <span class="status-chip" [class]="'status-' + employee.status.toLowerCase()">
           {{ employee.status }}
         </span>
+        <span class="spacer"></span>
+        <button mat-stroked-button (click)="openEmployeeDialog()">
+          <mat-icon>edit</mat-icon> Edit details
+        </button>
       </div>
 
       <mat-tab-group>
@@ -259,6 +264,31 @@ export class EmployeeDetailComponent implements OnInit {
     this.employeeService.getAuditTrail(id).subscribe({
       next: (page) => this.auditLogs = page.content,
       error: () => this.auditLogs = []
+    });
+  }
+
+  openEmployeeDialog(): void {
+    const dialogRef = this.dialog.open(EmployeeDialogComponent, {
+      width: '520px',
+      data: { employee: this.employee }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (!result) {
+        return;
+      }
+      this.employeeService.updateEmployee(this.employee!.id, result).subscribe({
+        next: (updated) => {
+          this.employee = updated;
+          this.snackBar.open('Employee updated', 'Close', { duration: 3000 });
+          this.loadSalary(updated.id);
+          this.loadAuditTrail(updated.id);
+        },
+        error: (err) => {
+          const message = err?.error?.message ?? 'Failed to update employee';
+          this.snackBar.open(message, 'Close', { duration: 6000 });
+        }
+      });
     });
   }
 
