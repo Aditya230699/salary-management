@@ -6,6 +6,7 @@ import com.salarymanagement.entity.Department;
 import com.salarymanagement.entity.Employee;
 import com.salarymanagement.entity.Salary;
 import com.salarymanagement.exception.ResourceNotFoundException;
+import com.salarymanagement.exception.ValidationException;
 import com.salarymanagement.repository.EmployeeRepository;
 import com.salarymanagement.repository.SalaryRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -147,8 +148,105 @@ class SalaryServiceTest {
         assertThat(result.getBaseSalary()).isEqualByComparingTo(new BigDecimal("120000"));
         assertThat(result.getNotes()).isEqualTo("Annual raise");
 
-        // Verify old salary was closed
+        // The superseded record is closed the day before the new one takes effect.
+        assertThat(testSalary.getEndDate()).isEqualTo(LocalDate.of(2024, 3, 31));
         verify(salaryRepository, times(2)).save(any(Salary.class));
         verify(auditService).log(eq(1L), eq("SALARY_UPDATED"), anyString(), eq("hr_manager"));
+    }
+
+    @Test
+    @DisplayName("Rejects a salary change dated before the record it would supersede")
+    void updateSalary_EffectiveDateBeforeCurrent_Throws() {
+        UpdateSalaryRequest request = UpdateSalaryRequest.builder()
+                .baseSalary(new BigDecimal("120000"))
+                .effectiveDate(LocalDate.of(2021, 6, 1)) // current record starts 2022-01-01
+                .build();
+
+        when(employeeRepository.findById(1L)).thenReturn(Optional.of(testEmployee));
+        when(salaryRepository.findCurrentSalaryByEmployeeId(1L)).thenReturn(Optional.of(testSalary));
+
+        assertThatThrownBy(() -> salaryService.updateSalary(1L, request, "hr_manager"))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("must be after");
+
+        // Nothing is persisted, so the existing history stays intact.
+        assertThat(testSalary.getEndDate()).isNull();
+        verify(salaryRepository, never()).save(any(Salary.class));
+    }
+
+    @Test
+    @DisplayName("Rejects a salary change dated the same day as the current record")
+    void updateSalary_EffectiveDateSameAsCurrent_Throws() {
+        UpdateSalaryRequest request = UpdateSalaryRequest.builder()
+                .baseSalary(new BigDecimal("120000"))
+                .effectiveDate(LocalDate.of(2022, 1, 1))
+                .build();
+
+        when(employeeRepository.findById(1L)).thenReturn(Optional.of(testEmployee));
+        when(salaryRepository.findCurrentSalaryByEmployeeId(1L)).thenReturn(Optional.of(testSalary));
+
+        assertThatThrownBy(() -> salaryService.updateSalary(1L, request, "hr_manager"))
+                .isInstanceOf(ValidationException.class);
+    }
+
+    @Test
+    @DisplayName("Omitted bonus and deductions are stored as zero, not null")
+    void updateSalary_NullBonusAndDeductions_DefaultToZero() {
+        UpdateSalaryRequest request = UpdateSalaryRequest.builder()
+                .baseSalary(new BigDecimal("150000"))
+                .effectiveDate(LocalDate.of(2024, 6, 1))
+                .build();
+
+        when(employeeRepository.findById(1L)).thenReturn(Optional.of(testEmployee));
+        when(salaryRepository.findCurrentSalaryByEmployeeId(1L)).thenReturn(Optional.of(testSalary));
+        when(salaryRepository.save(any(Salary.class))).thenAnswer(invocation -> {
+            Salary s = invocation.getArgument(0);
+            s.setCreatedAt(LocalDateTime.now());
+            return s;
+        });
+
+        SalaryDTO result = salaryService.updateSalary(1L, request, "hr_manager");
+
+        assertThat(result.getBonus()).isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(result.getDeductions()).isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(result.getNetSalary()).isEqualByComparingTo("150000");
+    }
+
+    @Test
+    @DisplayName("Rejects deductions that exceed base salary plus bonus")
+    void updateSalary_DeductionsExceedEarnings_Throws() {
+        UpdateSalaryRequest request = UpdateSalaryRequest.builder()
+                .baseSalary(new BigDecimal("100000"))
+                .bonus(new BigDecimal("5000"))
+                .deductions(new BigDecimal("200000"))
+                .effectiveDate(LocalDate.of(2024, 6, 1))
+                .build();
+
+        when(employeeRepository.findById(1L)).thenReturn(Optional.of(testEmployee));
+
+        assertThatThrownBy(() -> salaryService.updateSalary(1L, request, "hr_manager"))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("Deductions cannot exceed");
+    }
+
+    @Test
+    @DisplayName("New salary inherits the employee's currency of record")
+    void updateSalary_UsesEmployeeCurrency() {
+        UpdateSalaryRequest request = UpdateSalaryRequest.builder()
+                .baseSalary(new BigDecimal("160000"))
+                .effectiveDate(LocalDate.of(2024, 7, 1))
+                .build();
+
+        when(employeeRepository.findById(1L)).thenReturn(Optional.of(testEmployee));
+        when(salaryRepository.findCurrentSalaryByEmployeeId(1L)).thenReturn(Optional.empty());
+        when(salaryRepository.save(any(Salary.class))).thenAnswer(invocation -> {
+            Salary s = invocation.getArgument(0);
+            s.setCreatedAt(LocalDateTime.now());
+            return s;
+        });
+
+        SalaryDTO result = salaryService.updateSalary(1L, request, "hr_manager");
+
+        assertThat(result.getCurrency()).isEqualTo("USD");
     }
 }

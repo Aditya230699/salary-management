@@ -2,6 +2,8 @@ package com.salarymanagement.seed;
 
 import com.salarymanagement.entity.*;
 import com.salarymanagement.repository.*;
+import com.salarymanagement.service.CurrencyResolver;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -20,8 +22,10 @@ public class DataSeeder implements CommandLineRunner {
     private final SalaryRepository salaryRepository;
     private final AppUserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final CurrencyResolver currencyResolver;
 
-    private static final int TOTAL_EMPLOYEES = 10000;
+    @Value("${app.seed.employee-count:10000}")
+    private int totalEmployees;
 
     private static final String[] FIRST_NAMES = {
         "James", "Mary", "Robert", "Patricia", "John", "Jennifer", "Michael", "Linda",
@@ -57,14 +61,6 @@ public class DataSeeder implements CommandLineRunner {
         "VP Engineering", "CTO", "Director of Engineering"
     };
 
-    private static final Map<String, String> COUNTRY_CURRENCIES = Map.of(
-        "India", "INR",
-        "USA", "USD",
-        "UK", "GBP",
-        "Germany", "EUR",
-        "Australia", "AUD"
-    );
-
     // Base salary ranges per country (in local currency)
     private static final Map<String, double[]> SALARY_RANGES = Map.of(
         "India", new double[]{400000, 5000000},
@@ -84,12 +80,14 @@ public class DataSeeder implements CommandLineRunner {
                       DepartmentRepository departmentRepository,
                       SalaryRepository salaryRepository,
                       AppUserRepository userRepository,
-                      PasswordEncoder passwordEncoder) {
+                      PasswordEncoder passwordEncoder,
+                      CurrencyResolver currencyResolver) {
         this.employeeRepository = employeeRepository;
         this.departmentRepository = departmentRepository;
         this.salaryRepository = salaryRepository;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.currencyResolver = currencyResolver;
     }
 
     @Override
@@ -108,7 +106,7 @@ public class DataSeeder implements CommandLineRunner {
         seedEmployees(departments);
 
         long duration = System.currentTimeMillis() - startTime;
-        System.out.printf("Data seeding completed in %d ms. Total employees: %d%n", duration, TOTAL_EMPLOYEES);
+        System.out.printf("Data seeding completed in %d ms. Total employees: %d%n", duration, totalEmployees);
     }
 
     private void seedUsers() {
@@ -149,12 +147,12 @@ public class DataSeeder implements CommandLineRunner {
     private void seedEmployees(List<Department> departments) {
         Random random = new Random(42); // Fixed seed for reproducibility
         Set<String> usedEmails = new HashSet<>();
-        List<String> countries = new ArrayList<>(COUNTRY_CURRENCIES.keySet());
+        List<String> countries = currencyResolver.supportedCountries();
 
         List<Employee> employeeBatch = new ArrayList<>();
         List<Salary> salaryBatch = new ArrayList<>();
 
-        for (int i = 0; i < TOTAL_EMPLOYEES; i++) {
+        for (int i = 0; i < totalEmployees; i++) {
             String firstName = FIRST_NAMES[random.nextInt(FIRST_NAMES.length)];
             String lastName = LAST_NAMES[random.nextInt(LAST_NAMES.length)];
 
@@ -169,7 +167,7 @@ public class DataSeeder implements CommandLineRunner {
             usedEmails.add(email);
 
             String country = countries.get(random.nextInt(countries.size()));
-            String currency = COUNTRY_CURRENCIES.get(country);
+            String currency = currencyResolver.currencyFor(country);
             Department department = departments.get(random.nextInt(departments.size()));
             String designation = DESIGNATIONS[random.nextInt(DESIGNATIONS.length)];
 
@@ -206,7 +204,7 @@ public class DataSeeder implements CommandLineRunner {
                 salaryBatch.clear();
 
                 if ((i + 1) % 2000 == 0) {
-                    System.out.printf("  Seeded %d / %d employees...%n", i + 1, TOTAL_EMPLOYEES);
+                    System.out.printf("  Seeded %d / %d employees...%n", i + 1, totalEmployees);
                 }
             }
         }
