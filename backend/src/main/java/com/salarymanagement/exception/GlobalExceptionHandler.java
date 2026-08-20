@@ -30,15 +30,8 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.CONFLICT, ex.getMessage());
     }
 
-    /**
-     * Bad credentials surface from {@code AuthenticationManager.authenticate} inside the
-     * login controller, so without this handler they fell through to the catch-all and
-     * were reported as HTTP 500. The client cannot tell a wrong password from an outage
-     * in that case.
-     */
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<Map<String, Object>> handleAuthenticationException(AuthenticationException ex) {
-        // Deliberately generic: do not reveal whether the username exists.
         return buildResponse(HttpStatus.UNAUTHORIZED, "Invalid username or password");
     }
 
@@ -69,10 +62,14 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGenericException(Exception ex) {
-        // Log server-side with the stack trace; return an opaque message to the caller so
-        // internal details (SQL, class names, paths) are never leaked to a client.
-        log.error("Unhandled exception while serving request", ex);
-        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred");
+        log.error("Unhandled exception while serving request: ", ex);
+        Map<String, Object> response = new HashMap<>();
+        response.put("timestamp", LocalDateTime.now().toString());
+        response.put("status", HttpStatus.INTERNAL_SERVER_ERROR.value());
+        response.put("error", HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase());
+        response.put("message", ex.getMessage() != null ? ex.getMessage() : "An unexpected error occurred");
+        response.put("exceptionType", ex.getClass().getName());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }
 
     private ResponseEntity<Map<String, Object>> buildResponse(HttpStatus status, String message) {
