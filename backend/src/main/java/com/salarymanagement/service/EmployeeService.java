@@ -178,13 +178,12 @@ public class EmployeeService {
             employee.setDepartment(dept);
         }
         if (request.getCountry() != null && !request.getCountry().equals(employee.getCountry())) {
-            // Moving country must also move the currency of record, otherwise the employee
-            // ends up with, say, a US country and INR salary figures.
-            String newCurrency = currencyResolver.currencyFor(request.getCountry());
-            changes.append("country: ").append(employee.getCountry()).append(" -> ").append(request.getCountry()).append("; ");
-            changes.append("currency: ").append(employee.getCurrency()).append(" -> ").append(newCurrency).append("; ");
-            employee.setCountry(request.getCountry());
-            employee.setCurrency(newCurrency);
+            // A country transfer changes the currency in which compensation is recorded.
+            // Relabelling the existing amount (for example INR as USD) would corrupt pay
+            // data; converting it needs an approved FX rate and effective date. Keep that
+            // as an explicit transfer workflow rather than silently creating bad data.
+            throw new ValidationException(
+                    "Country transfers require an approved compensation transfer and cannot be made through employee update");
         }
         if (request.getStatus() != null) {
             Employee.EmployeeStatus newStatus = parseStatus(request.getStatus());

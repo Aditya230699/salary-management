@@ -55,7 +55,10 @@ public class SalaryService {
 
     @PreAuthorize("hasAnyRole('HR_MANAGER', 'ADMIN')")
     public SalaryDTO updateSalary(Long employeeId, UpdateSalaryRequest request, String performedBy) {
-        Employee employee = employeeRepository.findById(employeeId)
+        // Lock the parent employee before reading the current salary. This makes the
+        // close-and-insert sequence atomic for one employee and prevents two requests
+        // from both creating an open-ended ("current") salary row.
+        Employee employee = employeeRepository.findByIdForSalaryUpdate(employeeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not found with id: " + employeeId));
 
         BigDecimal bonus = nullToZero(request.getBonus());

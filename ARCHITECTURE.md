@@ -56,6 +56,11 @@ Repository Layer (Data Access)
 
 **Reasoning:** Salaries are stored in local currency. A mean over INR, USD, GBP, EUR and AUD is arithmetically computable and semantically meaningless, and the risk is not that it errors, it is that an HR manager reads it as real and makes a decision on it. Reporting per currency is honest; normalising would require agreed FX rates and an as-of date, which is a product decision the assessment does not settle.
 
+For the same reason, a standard employee edit cannot change country. A transfer needs an
+approved FX rate, a compensation amount, and an effective date; relabelling an existing
+INR amount as USD would create silently incorrect salary data. That belongs in a dedicated
+compensation-transfer workflow rather than a generic profile edit.
+
 **Consequence:** the dashboard reports median and quartiles, not just an average. A mean hides skew from a handful of executive salaries, and "half the team earns below X" is the question a pay-equity conversation actually starts from.
 
 ### 2. Stateless JWT Authentication

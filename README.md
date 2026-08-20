@@ -103,7 +103,7 @@ salary-management/
 | GET | /api/employees | List employees. Supports `search`, `department`, `country`, `status`, `page`, `size` (max 100), `sortBy` (whitelisted), `sortDir` |
 | GET | /api/employees/{id} | Get employee details |
 | POST | /api/employees | Create new employee |
-| PUT | /api/employees/{id} | Update employee. Changing country moves the currency of record |
+| PUT | /api/employees/{id} | Update employee attributes. Country transfers require an explicit compensation-transfer workflow |
 | GET | /api/employees/{id}/salary/current | Get current salary |
 | GET | /api/employees/{id}/salary/history | Get dated salary history |
 | PUT | /api/employees/{id}/salary | Update salary. Effective date must fall after the record it supersedes |

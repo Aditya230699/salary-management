@@ -273,22 +273,20 @@ class EmployeeServiceTest {
     }
 
     @Test
-    @DisplayName("Relocating an employee moves their currency of record with them")
-    void updateEmployee_CountryChange_UpdatesCurrency() {
+    @DisplayName("Rejects a country change without an explicit compensation transfer")
+    void updateEmployee_CountryChange_RequiresCompensationTransfer() {
         UpdateEmployeeRequest request = UpdateEmployeeRequest.builder().country("India").build();
 
         when(employeeRepository.findById(1L)).thenReturn(Optional.of(testEmployee));
-        when(employeeRepository.save(any(Employee.class))).thenAnswer(i -> i.getArgument(0));
-        when(salaryRepository.findCurrentSalaryByEmployeeId(1L)).thenReturn(Optional.empty());
 
-        employeeService.updateEmployee(1L, request, "hr_manager");
+        assertThatThrownBy(() -> employeeService.updateEmployee(1L, request, "hr_manager"))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("compensation transfer");
 
-        assertThat(testEmployee.getCountry()).isEqualTo("India");
-        assertThat(testEmployee.getCurrency()).isEqualTo("INR");
-
-        ArgumentCaptor<String> details = ArgumentCaptor.forClass(String.class);
-        verify(auditService).log(eq(1L), eq("EMPLOYEE_UPDATED"), details.capture(), eq("hr_manager"));
-        assertThat(details.getValue()).contains("currency: USD -> INR");
+        assertThat(testEmployee.getCountry()).isEqualTo("USA");
+        assertThat(testEmployee.getCurrency()).isEqualTo("USD");
+        verify(employeeRepository, never()).save(any(Employee.class));
+        verifyNoInteractions(auditService);
     }
 
     @Test

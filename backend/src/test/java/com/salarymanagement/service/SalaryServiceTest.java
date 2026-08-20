@@ -134,7 +134,7 @@ class SalaryServiceTest {
                 .notes("Annual raise")
                 .build();
 
-        when(employeeRepository.findById(1L)).thenReturn(Optional.of(testEmployee));
+        when(employeeRepository.findByIdForSalaryUpdate(1L)).thenReturn(Optional.of(testEmployee));
         when(salaryRepository.findCurrentSalaryByEmployeeId(1L)).thenReturn(Optional.of(testSalary));
         when(salaryRepository.save(any(Salary.class))).thenAnswer(invocation -> {
             Salary s = invocation.getArgument(0);
@@ -162,7 +162,7 @@ class SalaryServiceTest {
                 .effectiveDate(LocalDate.of(2021, 6, 1)) // current record starts 2022-01-01
                 .build();
 
-        when(employeeRepository.findById(1L)).thenReturn(Optional.of(testEmployee));
+        when(employeeRepository.findByIdForSalaryUpdate(1L)).thenReturn(Optional.of(testEmployee));
         when(salaryRepository.findCurrentSalaryByEmployeeId(1L)).thenReturn(Optional.of(testSalary));
 
         assertThatThrownBy(() -> salaryService.updateSalary(1L, request, "hr_manager"))
@@ -182,7 +182,7 @@ class SalaryServiceTest {
                 .effectiveDate(LocalDate.of(2022, 1, 1))
                 .build();
 
-        when(employeeRepository.findById(1L)).thenReturn(Optional.of(testEmployee));
+        when(employeeRepository.findByIdForSalaryUpdate(1L)).thenReturn(Optional.of(testEmployee));
         when(salaryRepository.findCurrentSalaryByEmployeeId(1L)).thenReturn(Optional.of(testSalary));
 
         assertThatThrownBy(() -> salaryService.updateSalary(1L, request, "hr_manager"))
@@ -197,7 +197,7 @@ class SalaryServiceTest {
                 .effectiveDate(LocalDate.of(2024, 6, 1))
                 .build();
 
-        when(employeeRepository.findById(1L)).thenReturn(Optional.of(testEmployee));
+        when(employeeRepository.findByIdForSalaryUpdate(1L)).thenReturn(Optional.of(testEmployee));
         when(salaryRepository.findCurrentSalaryByEmployeeId(1L)).thenReturn(Optional.of(testSalary));
         when(salaryRepository.save(any(Salary.class))).thenAnswer(invocation -> {
             Salary s = invocation.getArgument(0);
@@ -222,7 +222,7 @@ class SalaryServiceTest {
                 .effectiveDate(LocalDate.of(2024, 6, 1))
                 .build();
 
-        when(employeeRepository.findById(1L)).thenReturn(Optional.of(testEmployee));
+        when(employeeRepository.findByIdForSalaryUpdate(1L)).thenReturn(Optional.of(testEmployee));
 
         assertThatThrownBy(() -> salaryService.updateSalary(1L, request, "hr_manager"))
                 .isInstanceOf(ValidationException.class)
@@ -237,7 +237,7 @@ class SalaryServiceTest {
                 .effectiveDate(LocalDate.of(2024, 7, 1))
                 .build();
 
-        when(employeeRepository.findById(1L)).thenReturn(Optional.of(testEmployee));
+        when(employeeRepository.findByIdForSalaryUpdate(1L)).thenReturn(Optional.of(testEmployee));
         when(salaryRepository.findCurrentSalaryByEmployeeId(1L)).thenReturn(Optional.empty());
         when(salaryRepository.save(any(Salary.class))).thenAnswer(invocation -> {
             Salary s = invocation.getArgument(0);

@@ -35,8 +35,6 @@ export interface UpdateEmployeeRequest {
   email?: string;
   designation?: string;
   departmentId?: number;
-  country?: string;
-  currency?: string;
   status?: string;
 }
 

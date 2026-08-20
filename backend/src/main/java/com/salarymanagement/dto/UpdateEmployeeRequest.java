@@ -23,8 +23,5 @@ public class UpdateEmployeeRequest {
     private Long departmentId;
     private String country;
 
-    @Size(min = 3, max = 3, message = "Currency must be 3 character ISO code")
-    private String currency;
-
     private String status;
 }

@@ -57,22 +57,6 @@ import { DashboardService } from '../../services/dashboard.service';
       </mat-form-field>
 
       <mat-form-field appearance="outline" class="full-width">
-        <mat-label>Country</mat-label>
-        <mat-select [(ngModel)]="form.country">
-          <mat-option *ngFor="let c of countries" [value]="c">{{ c }}</mat-option>
-        </mat-select>
-      </mat-form-field>
-
-      <div class="currency-note" *ngIf="form.country !== data.employee.country">
-        <mat-icon>info</mat-icon>
-        <span>
-          Moving to {{ form.country }} changes the currency of record from
-          {{ data.employee.currency }}. Existing salary history keeps its original
-          currency; future changes will use the new one.
-        </span>
-      </div>
-
-      <mat-form-field appearance="outline" class="full-width">
         <mat-label>Status</mat-label>
         <mat-select [(ngModel)]="form.status">
           <mat-option value="ACTIVE">Active</mat-option>
@@ -95,17 +79,10 @@ import { DashboardService } from '../../services/dashboard.service';
     .row mat-form-field { flex: 1; }
     .employee-id { color: #666; margin: -8px 0 16px 24px; font-size: 0.9rem; }
     mat-dialog-content { min-width: 440px; }
-    .currency-note {
-      display: flex; gap: 8px; align-items: flex-start; background: #fff8e1;
-      color: #8a6d00; padding: 10px 12px; border-radius: 4px; margin-bottom: 16px;
-      font-size: 0.82rem;
-    }
-    .currency-note mat-icon { font-size: 18px; width: 18px; height: 18px; }
   `]
 })
 export class EmployeeDialogComponent implements OnInit {
   departments: Department[] = [];
-  countries: string[] = [];
   form: UpdateEmployeeRequest & { firstName: string; lastName: string; email: string } ;
 
   constructor(
@@ -118,7 +95,6 @@ export class EmployeeDialogComponent implements OnInit {
       lastName: data.employee.lastName,
       email: data.employee.email,
       designation: data.employee.designation,
-      country: data.employee.country,
       status: data.employee.status
     };
   }
@@ -129,7 +105,6 @@ export class EmployeeDialogComponent implements OnInit {
       // Match on name because the list DTO carries the department name, not its id.
       this.form.departmentId = departments.find(d => d.name === this.data.employee.departmentName)?.id;
     });
-    this.dashboardService.getCountries().subscribe(countries => this.countries = countries);
   }
 
   isValid(): boolean {
