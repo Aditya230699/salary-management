@@ -3,6 +3,11 @@
   command = "npm run build"
   publish = "dist/salary-management-frontend/browser"
 
+[build.environment]
+  NODE_VERSION = "22"
+  NETLIFY_SKIP_ANGEL_RUNTIME = "true"
+  DISABLE_ANGULAR_PLUGIN = "true"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
