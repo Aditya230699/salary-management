@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
@@ -78,7 +78,7 @@ import { Dashboard } from '../../models/dashboard.model';
           </span>
         </mat-card>
 
-        <mat-card>
+        <mat-card class="table-card">
           <mat-card-header>
             <mat-card-title>Pay by country</mat-card-title>
           </mat-card-header>
@@ -198,7 +198,7 @@ import { Dashboard } from '../../models/dashboard.model';
           </mat-card>
         </div>
 
-        <mat-card *ngIf="departmentHeadcount.length > 0">
+        <mat-card class="table-card" *ngIf="departmentHeadcount.length > 0">
           <mat-card-header>
             <mat-card-title>Headcount by department</mat-card-title>
           </mat-card-header>
@@ -221,12 +221,18 @@ import { Dashboard } from '../../models/dashboard.model';
     </div>
   `,
   styles: [`
+    .container { max-width: 1400px; margin: 0 auto; }
     .loading { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 64px 0; }
     .loading-text { margin-top: 16px; color: #666; font-size: 0.95rem; }
     .error-card { margin-bottom: 24px; border-left: 4px solid #f44336; }
     .error-card mat-card-content { display: flex; align-items: center; gap: 12px; }
     .page-header { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 24px; }
     .country-filter { width: 220px; }
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+    .stat-card { text-align: center; padding: 20px; }
+    .stat-value { font-size: 2rem; font-weight: 700; color: #3f51b5; }
+    .stat-label { color: #666; font-size: 0.85rem; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .table-card { margin-bottom: 24px; }
     .breakdown-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
     .explainer {
       display: flex; align-items: center; gap: 12px; padding: 12px 16px;
@@ -236,7 +242,9 @@ import { Dashboard } from '../../models/dashboard.model';
       background: #eef2ff; color: #3730a3; padding: 2px 8px;
       border-radius: 10px; font-size: 0.75rem; font-weight: 600;
     }
+    .full-width { width: 100%; }
     @media (max-width: 1100px) { .breakdown-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 768px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
   `]
 })
 export class DashboardComponent implements OnInit {
@@ -254,14 +262,21 @@ export class DashboardComponent implements OnInit {
                   'percentile75', 'maxSalary', 'averageSalary', 'totalPayroll', 'currency'];
   groupColumns = ['group', 'employeeCount', 'medianSalary', 'averageSalary', 'totalPayroll'];
 
-  constructor(private dashboardService: DashboardService) {}
+  constructor(
+    private dashboardService: DashboardService,
+    private cdr: ChangeDetectorRef
+  ) {}
 
   ngOnInit(): void {
     this.dashboardService.getCountries().subscribe({
-      next: (countries) => this.countries = countries || [],
+      next: (countries) => {
+        this.countries = countries || [];
+        this.cdr.markForCheck();
+      },
       error: (err) => {
         console.error('Failed to load countries:', err);
         this.countries = [];
+        this.cdr.markForCheck();
       }
     });
     this.load();
@@ -270,6 +285,7 @@ export class DashboardComponent implements OnInit {
   load(): void {
     this.loading = true;
     this.errorMessage = '';
+    this.cdr.markForCheck();
 
     this.dashboardService.getDashboard(this.selectedCountry || undefined).subscribe({
       next: (data) => {
@@ -295,12 +311,14 @@ export class DashboardComponent implements OnInit {
           this.errorMessage = 'Failed to process dashboard data.';
         } finally {
           this.loading = false;
+          this.cdr.markForCheck();
         }
       },
       error: (err) => {
         console.error('Dashboard request error:', err);
         this.errorMessage = 'Could not load dashboard data from server. Please try again.';
         this.loading = false;
+        this.cdr.markForCheck();
       }
     });
   }

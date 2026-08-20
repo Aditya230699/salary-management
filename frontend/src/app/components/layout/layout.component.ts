@@ -16,8 +16,8 @@ import { AuthService } from '../../services/auth.service';
     MatIconModule, MatSidenavModule, MatListModule
   ],
   template: `
-    <div class="layout-container" *ngIf="authService.isLoggedIn(); else loginOnly">
-      <mat-toolbar color="primary" class="toolbar">
+    <div class="layout-container">
+      <mat-toolbar color="primary" class="toolbar" *ngIf="authService.isLoggedIn()">
         <mat-icon>payments</mat-icon>
         <span class="app-title">Salary Management</span>
         <span class="spacer"></span>
@@ -28,7 +28,7 @@ import { AuthService } from '../../services/auth.service';
       </mat-toolbar>
 
       <div class="content-wrapper">
-        <nav class="sidenav">
+        <nav class="sidenav" *ngIf="authService.isLoggedIn()">
           <mat-nav-list>
             <a mat-list-item routerLink="/dashboard" routerLinkActive="active">
               <mat-icon matListItemIcon>dashboard</mat-icon>
@@ -41,18 +41,14 @@ import { AuthService } from '../../services/auth.service';
           </mat-nav-list>
         </nav>
 
-        <main class="main-content">
+        <main [class.main-content]="authService.isLoggedIn()" [class.full-page]="!authService.isLoggedIn()">
           <ng-content></ng-content>
         </main>
       </div>
     </div>
-
-    <ng-template #loginOnly>
-      <ng-content></ng-content>
-    </ng-template>
   `,
   styles: [`
-    .layout-container { display: flex; flex-direction: column; height: 100vh; }
+    .layout-container { display: flex; flex-direction: column; min-height: 100vh; }
     .toolbar { position: sticky; top: 0; z-index: 100; }
     .app-title { margin-left: 8px; font-size: 1.1rem; }
     .spacer { flex: 1 1 auto; }
@@ -60,6 +56,7 @@ import { AuthService } from '../../services/auth.service';
     .content-wrapper { display: flex; flex: 1; overflow: hidden; }
     .sidenav { width: 220px; border-right: 1px solid #e0e0e0; background: white; }
     .main-content { flex: 1; overflow-y: auto; padding: 24px; }
+    .full-page { flex: 1; width: 100%; }
     .active { background-color: rgba(63, 81, 181, 0.08); }
   `]
 })
