@@ -12,4 +12,5 @@ WORKDIR /app
 COPY --from=build /app/target/salary-management-backend-1.0.0.jar app.jar
 
 EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+# Restrict JVM Heap to fit free tier limits (512MB RAM) and use low-overhead Serial GC for fast container startup
+ENTRYPOINT ["java", "-Xmx350m", "-Xss512k", "-XX:+UseSerialGC", "-jar", "/app/app.jar"]
