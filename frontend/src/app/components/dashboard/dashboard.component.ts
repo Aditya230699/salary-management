@@ -8,15 +8,16 @@ import { MatTableModule } from '@angular/material/table';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatButtonModule } from '@angular/material/button';
 import { DashboardService } from '../../services/dashboard.service';
-import { Dashboard, SalaryStats } from '../../models/dashboard.model';
+import { Dashboard } from '../../models/dashboard.model';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
   imports: [
     CommonModule, FormsModule, MatCardModule, MatProgressSpinnerModule, MatIconModule,
-    MatTableModule, MatFormFieldModule, MatSelectModule, MatTooltipModule
+    MatTableModule, MatFormFieldModule, MatSelectModule, MatTooltipModule, MatButtonModule
   ],
   template: `
     <div class="container">
@@ -32,10 +33,17 @@ import { Dashboard, SalaryStats } from '../../models/dashboard.model';
       </div>
 
       <div *ngIf="loading" class="loading">
-        <mat-spinner></mat-spinner>
+        <mat-spinner diameter="48"></mat-spinner>
+        <p class="loading-text">Loading salary analytics...</p>
       </div>
 
-      <div class="error-message" *ngIf="errorMessage">{{ errorMessage }}</div>
+      <mat-card class="error-card" *ngIf="errorMessage && !loading">
+        <mat-card-content>
+          <mat-icon color="warn">error_outline</mat-icon>
+          <span>{{ errorMessage }}</span>
+          <button mat-flat-button color="primary" (click)="load()">Retry</button>
+        </mat-card-content>
+      </mat-card>
 
       <div *ngIf="dashboard && !loading">
         <div class="stats-grid">
@@ -75,7 +83,7 @@ import { Dashboard, SalaryStats } from '../../models/dashboard.model';
             <mat-card-title>Pay by country</mat-card-title>
           </mat-card-header>
           <mat-card-content>
-            <table mat-table [dataSource]="dashboard.salaryStatsByCountry" class="full-width">
+            <table mat-table [dataSource]="dashboard.salaryStatsByCountry || []" class="full-width">
               <ng-container matColumnDef="group">
                 <th mat-header-cell *matHeaderCellDef>Country</th>
                 <td mat-cell *matCellDef="let row">{{ row.group }}</td>
@@ -190,7 +198,7 @@ import { Dashboard, SalaryStats } from '../../models/dashboard.model';
           </mat-card>
         </div>
 
-        <mat-card>
+        <mat-card *ngIf="departmentHeadcount.length > 0">
           <mat-card-header>
             <mat-card-title>Headcount by department</mat-card-title>
           </mat-card-header>
@@ -213,13 +221,16 @@ import { Dashboard, SalaryStats } from '../../models/dashboard.model';
     </div>
   `,
   styles: [`
-    .loading { display: flex; justify-content: center; padding: 48px; }
-    .page-header { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+    .loading { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 64px 0; }
+    .loading-text { margin-top: 16px; color: #666; font-size: 0.95rem; }
+    .error-card { margin-bottom: 24px; border-left: 4px solid #f44336; }
+    .error-card mat-card-content { display: flex; align-items: center; gap: 12px; }
+    .page-header { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 24px; }
     .country-filter { width: 220px; }
-    .breakdown-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .breakdown-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
     .explainer {
       display: flex; align-items: center; gap: 12px; padding: 12px 16px;
-      background: #eef2ff; color: #3730a3; font-size: 0.9rem;
+      background: #eef2ff; color: #3730a3; font-size: 0.9rem; margin-bottom: 16px;
     }
     .currency-badge {
       background: #eef2ff; color: #3730a3; padding: 2px 8px;
@@ -235,11 +246,6 @@ export class DashboardComponent implements OnInit {
   loading = true;
   errorMessage = '';
 
-  /**
-   * Derived views are computed once per load. Binding a method call straight into
-   * `[dataSource]` rebuilt the array on every change detection pass, which forced the
-   * table to re-render continuously.
-   */
   departmentHeadcount: Array<{ name: string; count: number }> = [];
   countryCount = 0;
   departmentCount = 0;
@@ -252,8 +258,11 @@ export class DashboardComponent implements OnInit {
 
   ngOnInit(): void {
     this.dashboardService.getCountries().subscribe({
-      next: (countries) => this.countries = countries,
-      error: () => this.countries = []
+      next: (countries) => this.countries = countries || [],
+      error: (err) => {
+        console.error('Failed to load countries:', err);
+        this.countries = [];
+      }
     });
     this.load();
   }
@@ -264,16 +273,33 @@ export class DashboardComponent implements OnInit {
 
     this.dashboardService.getDashboard(this.selectedCountry || undefined).subscribe({
       next: (data) => {
-        this.dashboard = data;
-        this.departmentHeadcount = Object.keys(data.employeesByDepartment)
-          .map(name => ({ name, count: data.employeesByDepartment[name] }))
-          .sort((a, b) => b.count - a.count);
-        this.countryCount = Object.keys(data.employeesByCountry).length;
-        this.departmentCount = this.departmentHeadcount.length;
-        this.loading = false;
+        try {
+          this.dashboard = data;
+          if (data && data.employeesByDepartment) {
+            this.departmentHeadcount = Object.keys(data.employeesByDepartment)
+              .map(name => ({ name, count: data.employeesByDepartment[name] }))
+              .sort((a, b) => b.count - a.count);
+          } else {
+            this.departmentHeadcount = [];
+          }
+
+          if (data && data.employeesByCountry) {
+            this.countryCount = Object.keys(data.employeesByCountry).length;
+          } else {
+            this.countryCount = 0;
+          }
+
+          this.departmentCount = this.departmentHeadcount.length;
+        } catch (e) {
+          console.error('Error processing dashboard response:', e);
+          this.errorMessage = 'Failed to process dashboard data.';
+        } finally {
+          this.loading = false;
+        }
       },
-      error: () => {
-        this.errorMessage = 'Could not load the dashboard. Please try again.';
+      error: (err) => {
+        console.error('Dashboard request error:', err);
+        this.errorMessage = 'Could not load dashboard data from server. Please try again.';
         this.loading = false;
       }
     });
