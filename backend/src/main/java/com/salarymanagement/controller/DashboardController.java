@@ -4,6 +4,7 @@ import com.salarymanagement.dto.DashboardDTO;
 import com.salarymanagement.service.CurrencyResolver;
 import com.salarymanagement.service.DashboardService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,17 +21,14 @@ public class DashboardController {
         this.currencyResolver = currencyResolver;
     }
 
-    /**
-     * @param country optional. Narrowing to one country makes every money figure
-     *                single-currency and unlocks the department and designation breakdowns.
-     */
     @GetMapping
+    @PreAuthorize("hasAnyRole('HR_MANAGER', 'ADMIN')")
     public ResponseEntity<DashboardDTO> getDashboard(@RequestParam(required = false) String country) {
         return ResponseEntity.ok(dashboardService.getDashboard(country));
     }
 
-    /** Reference list so the UI does not hardcode the countries the org operates in. */
     @GetMapping("/countries")
+    @PreAuthorize("hasAnyRole('HR_MANAGER', 'ADMIN')")
     public ResponseEntity<List<String>> getCountries() {
         return ResponseEntity.ok(currencyResolver.supportedCountries());
     }

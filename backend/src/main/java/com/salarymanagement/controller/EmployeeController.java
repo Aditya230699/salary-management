@@ -8,6 +8,7 @@ import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,6 +23,7 @@ public class EmployeeController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('HR_MANAGER', 'ADMIN')")
     public ResponseEntity<Page<EmployeeDTO>> getEmployees(
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String department,
@@ -38,11 +40,13 @@ public class EmployeeController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('HR_MANAGER', 'ADMIN')")
     public ResponseEntity<EmployeeDTO> getEmployee(@PathVariable Long id) {
         return ResponseEntity.ok(employeeService.getEmployeeById(id));
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('HR_MANAGER', 'ADMIN')")
     public ResponseEntity<EmployeeDTO> createEmployee(
             @Valid @RequestBody CreateEmployeeRequest request,
             Authentication authentication) {
@@ -51,6 +55,7 @@ public class EmployeeController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('HR_MANAGER', 'ADMIN')")
     public ResponseEntity<EmployeeDTO> updateEmployee(
             @PathVariable Long id,
             @Valid @RequestBody UpdateEmployeeRequest request,

@@ -73,8 +73,7 @@ public class GlobalExceptionHandler {
         response.put("timestamp", LocalDateTime.now().toString());
         response.put("status", HttpStatus.INTERNAL_SERVER_ERROR.value());
         response.put("error", HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase());
-        response.put("message", ex.getMessage() != null ? ex.getMessage() : "An unexpected error occurred");
-        response.put("exceptionType", ex.getClass().getName());
+        response.put("message", "An unexpected error occurred on the server.");
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }
 
