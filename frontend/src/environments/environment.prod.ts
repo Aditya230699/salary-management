@@ -1,4 +1,4 @@
 export const environment = {
   production: true,
-  apiUrl: '/api'
+  apiUrl: 'https://salary-management-api-bcg5.onrender.com/api'
 };
