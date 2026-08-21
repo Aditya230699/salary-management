@@ -104,7 +104,6 @@ class EmployeeControllerTest {
                 .designation("Senior Engineer")
                 .departmentId(1L)
                 .country("USA")
-                .currency("USD")
                 .joinDate(LocalDate.of(2024, 3, 1))
                 .baseSalary(new BigDecimal("120000"))
                 .build();

@@ -22,8 +22,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -80,10 +82,14 @@ public class EmployeeService {
         Page<Employee> employees = employeeRepository.findWithFilters(
                 emptyToNull(search), emptyToNull(department), emptyToNull(country), statusEnum, pageable);
 
+        // One batch lookup for the whole page instead of one salary query per row.
+        List<Long> ids = employees.getContent().stream().map(Employee::getId).toList();
+        Map<Long, BigDecimal> currentSalaries = salaryRepository.findByEmployeeIdInAndEndDateIsNull(ids).stream()
+                .collect(Collectors.toMap(salary -> salary.getEmployee().getId(), Salary::getBaseSalary));
+
         return employees.map(emp -> {
             EmployeeDTO dto = EmployeeDTO.fromEntity(emp);
-            salaryRepository.findCurrentSalaryByEmployeeId(emp.getId())
-                    .ifPresent(salary -> dto.setCurrentSalary(salary.getBaseSalary()));
+            dto.setCurrentSalary(currentSalaries.get(emp.getId()));
             return dto;
         });
     }
@@ -152,26 +158,28 @@ public class EmployeeService {
 
         StringBuilder changes = new StringBuilder();
 
-        if (request.getFirstName() != null) {
+        // Only fields that actually differ are applied and recorded. Re-submitting the
+        // current values must not produce "John -> John" entries in the audit trail.
+        if (request.getFirstName() != null && !request.getFirstName().equals(employee.getFirstName())) {
             changes.append("firstName: ").append(employee.getFirstName()).append(" -> ").append(request.getFirstName()).append("; ");
             employee.setFirstName(request.getFirstName());
         }
-        if (request.getLastName() != null) {
+        if (request.getLastName() != null && !request.getLastName().equals(employee.getLastName())) {
             changes.append("lastName: ").append(employee.getLastName()).append(" -> ").append(request.getLastName()).append("; ");
             employee.setLastName(request.getLastName());
         }
-        if (request.getEmail() != null) {
+        if (request.getEmail() != null && !request.getEmail().equals(employee.getEmail())) {
             employeeRepository.findByEmail(request.getEmail())
                     .filter(e -> !e.getId().equals(id))
                     .ifPresent(e -> { throw new DuplicateResourceException("Email already in use: " + request.getEmail()); });
             changes.append("email: ").append(employee.getEmail()).append(" -> ").append(request.getEmail()).append("; ");
             employee.setEmail(request.getEmail());
         }
-        if (request.getDesignation() != null) {
+        if (request.getDesignation() != null && !request.getDesignation().equals(employee.getDesignation())) {
             changes.append("designation: ").append(employee.getDesignation()).append(" -> ").append(request.getDesignation()).append("; ");
             employee.setDesignation(request.getDesignation());
         }
-        if (request.getDepartmentId() != null) {
+        if (request.getDepartmentId() != null && !request.getDepartmentId().equals(employee.getDepartment().getId())) {
             Department dept = departmentRepository.findById(request.getDepartmentId())
                     .orElseThrow(() -> new ResourceNotFoundException("Department not found with id: " + request.getDepartmentId()));
             changes.append("department: ").append(employee.getDepartment().getName()).append(" -> ").append(dept.getName()).append("; ");
@@ -187,12 +195,18 @@ public class EmployeeService {
         }
         if (request.getStatus() != null) {
             Employee.EmployeeStatus newStatus = parseStatus(request.getStatus());
-            changes.append("status: ").append(employee.getStatus()).append(" -> ").append(newStatus).append("; ");
-            employee.setStatus(newStatus);
+            if (newStatus != employee.getStatus()) {
+                changes.append("status: ").append(employee.getStatus()).append(" -> ").append(newStatus).append("; ");
+                employee.setStatus(newStatus);
+            }
         }
 
         employee = employeeRepository.save(employee);
-        auditService.log(id, "EMPLOYEE_UPDATED", changes.toString(), performedBy);
+        if (changes.length() > 0) {
+            // A request that changes nothing still saves (and thus refreshes updatedAt),
+            // but writing an empty audit row would only add noise to the change history.
+            auditService.log(id, "EMPLOYEE_UPDATED", changes.toString(), performedBy);
+        }
 
         EmployeeDTO dto = EmployeeDTO.fromEntity(employee);
         salaryRepository.findCurrentSalaryByEmployeeId(id)

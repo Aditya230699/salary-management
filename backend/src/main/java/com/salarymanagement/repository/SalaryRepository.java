@@ -14,6 +14,12 @@ public interface SalaryRepository extends JpaRepository<Salary, Long> {
 
     List<Salary> findByEmployeeIdOrderByEffectiveDateDesc(Long employeeId);
 
+    /**
+     * Open-ended ("current") salary rows for a set of employees in one query, so a page
+     * of employees does not cost one salary lookup per row.
+     */
+    List<Salary> findByEmployeeIdInAndEndDateIsNull(List<Long> employeeIds);
+
     @Query("SELECT s FROM Salary s WHERE s.employee.id = :employeeId AND s.endDate IS NULL")
     Optional<Salary> findCurrentSalaryByEmployeeId(@Param("employeeId") Long employeeId);
 

@@ -91,13 +91,19 @@ class EmployeeServiceTest {
         Page<Employee> page = new PageImpl<>(List.of(testEmployee));
         when(employeeRepository.findWithFilters(any(), any(), any(), any(), any(Pageable.class)))
                 .thenReturn(page);
-        when(salaryRepository.findCurrentSalaryByEmployeeId(1L)).thenReturn(Optional.empty());
+        Salary salary = Salary.builder()
+                .employee(testEmployee)
+                .baseSalary(new BigDecimal("100000"))
+                .build();
+        when(salaryRepository.findByEmployeeIdInAndEndDateIsNull(List.of(1L)))
+                .thenReturn(List.of(salary));
 
         Page<EmployeeDTO> result = employeeService.getEmployees(
                 null, null, null, null, 0, 20, "id", "asc");
 
         assertThat(result.getContent()).hasSize(1);
         assertThat(result.getContent().get(0).getFirstName()).isEqualTo("John");
+        assertThat(result.getContent().get(0).getCurrentSalary()).isEqualByComparingTo("100000");
     }
 
     @Test
@@ -203,11 +209,10 @@ class EmployeeServiceTest {
     }
 
     @Test
-    @DisplayName("Derives currency from country and ignores a mismatched client value")
+    @DisplayName("Derives the currency of record from the employee's country")
     void createEmployee_DerivesCurrencyFromCountry() {
         CreateEmployeeRequest request = validCreateRequest();
         request.setCountry("Germany");
-        request.setCurrency("XXX"); // client-supplied value must not be trusted
 
         when(employeeRepository.findByEmail(anyString())).thenReturn(Optional.empty());
         when(departmentRepository.findById(1L)).thenReturn(Optional.of(testDepartment));
@@ -273,6 +278,23 @@ class EmployeeServiceTest {
     }
 
     @Test
+    @DisplayName("An update that changes nothing writes no audit row")
+    void updateEmployee_NoChanges_SkipsAudit() {
+        // Same first name as the stored record, everything else absent.
+        UpdateEmployeeRequest request = UpdateEmployeeRequest.builder()
+                .firstName("John")
+                .build();
+
+        when(employeeRepository.findById(1L)).thenReturn(Optional.of(testEmployee));
+        when(employeeRepository.save(any(Employee.class))).thenReturn(testEmployee);
+        when(salaryRepository.findCurrentSalaryByEmployeeId(1L)).thenReturn(Optional.empty());
+
+        employeeService.updateEmployee(1L, request, "hr_manager");
+
+        verifyNoInteractions(auditService);
+    }
+
+    @Test
     @DisplayName("Rejects a country change without an explicit compensation transfer")
     void updateEmployee_CountryChange_RequiresCompensationTransfer() {
         UpdateEmployeeRequest request = UpdateEmployeeRequest.builder().country("India").build();
@@ -320,7 +342,6 @@ class EmployeeServiceTest {
                 .designation("Senior Engineer")
                 .departmentId(1L)
                 .country("USA")
-                .currency("USD")
                 .joinDate(LocalDate.of(2024, 3, 1))
                 .baseSalary(new BigDecimal("120000"))
                 .build();
