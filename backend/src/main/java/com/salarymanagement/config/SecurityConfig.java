@@ -42,6 +42,9 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> {
                 auth.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll();
                 auth.requestMatchers("/api/auth/login").permitAll();
+                // Liveness probe stays open so a sleeping free-tier container can be
+                // woken and verified without credentials.
+                auth.requestMatchers("/api/health").permitAll();
                 if (h2ConsoleExposed) {
                     auth.requestMatchers("/h2-console/**").permitAll();
                 }
