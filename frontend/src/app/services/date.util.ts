@@ -11,3 +11,20 @@ export function toLocalDateString(date: Date): string {
   const day = `${date.getDate()}`.padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
+
+/**
+ * Parses a yyyy-MM-dd string into local midnight of that calendar date.
+ *
+ * `new Date('yyyy-MM-dd')` interprets the string as UTC midnight, which renders on the
+ * previous calendar day in any timezone behind UTC. The salary dialog derives its minimum
+ * effective date from this value, so the drift let users pick a day the backend rejects.
+ */
+export function parseLocalDate(value: string): Date {
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
+/** The calendar day after the given date, staying in local time. */
+export function nextLocalDay(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
+}

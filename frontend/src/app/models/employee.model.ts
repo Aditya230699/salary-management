@@ -22,7 +22,7 @@ export interface CreateEmployeeRequest {
   designation: string;
   departmentId: number;
   country: string;
-  currency: string;
+  // No currency field: the currency of record is derived server-side from the country.
   joinDate: string;
   baseSalary: number;
   bonus?: number;

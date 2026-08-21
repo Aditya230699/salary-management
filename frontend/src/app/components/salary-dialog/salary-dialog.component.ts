@@ -9,7 +9,7 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { Employee } from '../../models/employee.model';
 import { Salary, UpdateSalaryRequest } from '../../models/salary.model';
-import { toLocalDateString } from '../../services/date.util';
+import { nextLocalDay, parseLocalDate, toLocalDateString } from '../../services/date.util';
 
 @Component({
   selector: 'app-salary-dialog',
@@ -91,8 +91,10 @@ export class SalaryDialogComponent {
     this.deductions = data.currentSalary?.deductions || 0;
 
     if (data.currentSalary?.effectiveDate) {
-      const current = new Date(data.currentSalary.effectiveDate);
-      this.minEffectiveDate = new Date(current.getTime() + 24 * 60 * 60 * 1000);
+      // Parsed as a local calendar date; `new Date('yyyy-MM-dd')` would read it as UTC
+      // midnight and, behind UTC, offer a minimum date one day too early.
+      const current = parseLocalDate(data.currentSalary.effectiveDate);
+      this.minEffectiveDate = nextLocalDay(current);
       this.effectiveDate = this.minEffectiveDate > new Date() ? this.minEffectiveDate : new Date();
     } else {
       this.effectiveDate = new Date();

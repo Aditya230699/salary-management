@@ -1,4 +1,4 @@
-import { toLocalDateString } from './date.util';
+import { toLocalDateString, parseLocalDate, nextLocalDay } from './date.util';
 
 describe('toLocalDateString', () => {
 
@@ -21,5 +21,33 @@ describe('toLocalDateString', () => {
 
   it('handles a leap day', () => {
     expect(toLocalDateString(new Date(2024, 1, 29))).toBe('2024-02-29');
+  });
+});
+
+describe('parseLocalDate', () => {
+
+  it('reads an ISO date as that calendar day in local time', () => {
+    // new Date('2024-04-01') is UTC midnight, which is 2024-03-31 in any timezone
+    // behind UTC. The salary dialog's minimum date was drifting a day early this way.
+    const parsed = parseLocalDate('2024-04-01');
+
+    expect(toLocalDateString(parsed)).toBe('2024-04-01');
+  });
+
+  it('round-trips with toLocalDateString', () => {
+    const original = new Date(2025, 11, 31);
+
+    expect(parseLocalDate(toLocalDateString(original)).getTime()).toBe(original.getTime());
+  });
+});
+
+describe('nextLocalDay', () => {
+
+  it('returns the following calendar day', () => {
+    expect(toLocalDateString(nextLocalDay(new Date(2024, 0, 31)))).toBe('2024-02-01');
+  });
+
+  it('rolls over the year boundary', () => {
+    expect(toLocalDateString(nextLocalDay(new Date(2024, 11, 31)))).toBe('2025-01-01');
   });
 });

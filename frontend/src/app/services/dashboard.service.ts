@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, catchError, shareReplay, throwError } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { Dashboard } from '../models/dashboard.model';
 import { Department } from '../models/auth.model';
@@ -9,6 +9,13 @@ import { Department } from '../models/auth.model';
   providedIn: 'root'
 })
 export class DashboardService {
+
+  // Reference data (countries, departments) changes rarely, but it is needed by the
+  // dashboard, the employee list, and the edit dialog. Sharing one replayed stream
+  // stops each screen from refetching it; the cache is dropped on error so a failed
+  // load is retried instead of being replayed forever.
+  private countries$?: Observable<string[]>;
+  private departments$?: Observable<Department[]>;
 
   constructor(private http: HttpClient) {}
 
@@ -21,10 +28,28 @@ export class DashboardService {
   }
 
   getDepartments(): Observable<Department[]> {
-    return this.http.get<Department[]>(`${environment.apiUrl}/departments`);
+    if (!this.departments$) {
+      this.departments$ = this.http.get<Department[]>(`${environment.apiUrl}/departments`).pipe(
+        catchError(err => {
+          this.departments$ = undefined;
+          return throwError(() => err);
+        }),
+        shareReplay(1)
+      );
+    }
+    return this.departments$;
   }
 
   getCountries(): Observable<string[]> {
-    return this.http.get<string[]>(`${environment.apiUrl}/dashboard/countries`);
+    if (!this.countries$) {
+      this.countries$ = this.http.get<string[]>(`${environment.apiUrl}/dashboard/countries`).pipe(
+        catchError(err => {
+          this.countries$ = undefined;
+          return throwError(() => err);
+        }),
+        shareReplay(1)
+      );
+    }
+    return this.countries$;
   }
 }
