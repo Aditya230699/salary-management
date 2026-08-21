@@ -69,9 +69,14 @@ compensation-transfer workflow rather than a generic profile edit.
 **Reasoning:** Simpler to scale horizontally, no session store needed, clean separation between frontend/backend. Trade-off: can't instantly revoke tokens (acceptable for this use case with 24h expiry).
 
 ### 3. H2 Database (Embedded)
-**Decision:** Use H2 with file-based persistence instead of PostgreSQL/MySQL.
+**Decision:** Use H2, in-memory by default, instead of PostgreSQL/MySQL.
 
-**Reasoning:** Zero-config setup for reviewers (no database installation needed). Schema is JPA/Hibernate-managed, so migration to PostgreSQL is a config change. Trade-off: no production-grade features, but acceptable for assessment.
+**Reasoning:** Zero-config setup for reviewers (no database installation needed) and a
+free-tier cloud container with an ephemeral filesystem, where a file database would be
+wiped on every redeploy anyway; the seeder rebuilds the full 10,000-employee dataset in
+about two seconds on boot. `SPRING_DATASOURCE_URL` can point at a file-based H2 URL to
+keep data between local runs. Schema is JPA/Hibernate-managed, so migration to PostgreSQL
+is a config change. Trade-off: no production-grade features, but acceptable for assessment.
 
 ### 4. Pagination for 10K Employees
 **Decision:** Server-side pagination with Spring Data `Pageable`, default 20 per page.

@@ -53,7 +53,7 @@
 | Backend | "Implement Spring Boot REST API with JWT auth, pagination, filtering" | Full backend with 5 controllers, 5 services |
 | Seeding | "Generate 10K realistic employees across 5 countries with proper salary ranges" | DataSeeder with batch processing |
 | Frontend | "Build Angular 17 app with Material UI for employee/salary management" | 6 components with full CRUD flow |
-| Testing | "Write unit tests for core business logic with edge cases" | ~30 test cases (backend + frontend) |
+| Testing | "Write unit tests for core business logic with edge cases" | 47 backend tests + 29 frontend specs |
 
 ## What I Verified Manually
 

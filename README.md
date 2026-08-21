@@ -6,8 +6,8 @@ A web-based employee salary management platform for HR managers to manage compen
 
 | Layer | Technology |
 |-------|-----------|
-| Backend | Java 17, Spring Boot 3.2, Spring Security, JPA/Hibernate |
-| Database | H2 (embedded, file-based) |
+| Backend | Java 17, Spring Boot 3.4, Spring Security, JPA/Hibernate |
+| Database | H2 (embedded, in-memory by default) |
 | Frontend | Angular 17, Angular Material |
 | Auth | JWT (stateless, BCrypt hashed passwords) |
 | Testing | JUnit 5, Mockito, Jasmine/Karma |
@@ -28,8 +28,11 @@ cd backend
 ./mvnw spring-boot:run          # mvnw.cmd on Windows
 ```
 
-The backend starts on `http://localhost:8080` and seeds 10,000 employees on first run
-(~2 seconds). To also expose the H2 console for local inspection:
+The backend starts on `http://localhost:8080` and seeds 10,000 employees on startup
+(~2 seconds). The default database is in-memory, so data resets on every restart; point
+`SPRING_DATASOURCE_URL` at a file-based H2 URL (for example
+`jdbc:h2:file:./data/salarydb`) to keep data between runs. To also expose the H2 console
+for local inspection:
 
 ```bash
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
@@ -95,10 +98,33 @@ salary-management/
         └── models/           # TypeScript interfaces
 ```
 
+## Deployment
+
+The application is deployed:
+
+| What | Where |
+|------|-------|
+| Frontend | https://jocular-druid-283316.netlify.app |
+| Backend API | https://salary-management-api-bcg5.onrender.com |
+| Source | https://github.com/Aditya230699/salary-management |
+
+Log in with the demo credentials below. Note that the API runs on Render's free tier:
+after ~15 minutes of inactivity the container sleeps, and the **first request can take a
+few minutes** while the JVM boots and re-seeds 10,000 employees. If that happens, open
+`GET /api/health` (no token needed) once to wake the container, wait for `{"status":"UP"}`
+and reload.
+
+The backend is containerised via `backend/Dockerfile`; the free-tier container is
+ephemeral, which is why the default database is in-memory and re-seeds on boot. The
+frontend deploys from `netlify.toml` (build settings, SPA redirects, security headers).
+The frontend reads the API URL from `frontend/src/environments/environment.ts`; the API
+publishes its allowed origins via `CORS_ALLOWED_ORIGINS`.
+
 ## API Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
+| GET | /api/health | Unauthenticated liveness probe (also wakes the sleeping free-tier container) |
 | POST | /api/auth/login | Authenticate and get JWT token |
 | GET | /api/employees | List employees. Supports `search`, `department`, `country`, `status`, `page`, `size` (max 100), `sortBy` (whitelisted), `sortDir` |
 | GET | /api/employees/{id} | Get employee details |
@@ -112,7 +138,7 @@ salary-management/
 | GET | /api/dashboard/countries | Countries the organisation operates in |
 | GET | /api/departments | List all departments |
 
-All `/api/**` routes except login require a bearer token and the `HR_MANAGER` or `ADMIN` role.
+All `/api/**` routes except `login` and `health` require a bearer token and the `HR_MANAGER` or `ADMIN` role.
 
 ### Reading the dashboard
 
@@ -126,13 +152,13 @@ designations like for like. The reasoning is in `REQUIREMENTS.md`.
 ### Backend
 ```bash
 cd backend
-./mvnw test          # 46 tests
+./mvnw test          # 47 tests
 ```
 
 ### Frontend
 ```bash
 cd frontend
-npm test             # 25 specs, ChromeHeadless
+npm test             # 29 specs, ChromeHeadless
 ```
 
 Backend coverage focuses on the rules that are expensive to get wrong: percentile maths

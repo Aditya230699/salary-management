@@ -67,6 +67,8 @@ bucket-per-account limiter with lockout, not in application code.
 production where schema changes should be explicit, reviewed migrations. A real deployment
 would use Flyway or Liquibase and set `ddl-auto=validate`.
 
-**H2 file database.** Chosen so the project runs with no database install. It is not
-encrypted at rest. Salary data in production warrants encryption at rest plus
-column-level encryption or tokenisation for the pay figures themselves.
+**H2 embedded database.** Chosen so the project runs with no database install; the
+deployed instance runs it in-memory because the container filesystem is ephemeral, while
+a file-based mode remains available locally. Neither mode encrypts data at rest. Salary
+data in production warrants a managed database with encryption at rest plus column-level
+encryption or tokenisation for the pay figures themselves.

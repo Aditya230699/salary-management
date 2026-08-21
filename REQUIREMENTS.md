@@ -65,7 +65,7 @@ approximated.
 ## Technical Architecture
 
 - **Backend**: Java 17 + Spring Boot 3.4 + Spring Security + JPA/Hibernate
-- **Database**: H2 (file-based, zero install) with a schema that ports to PostgreSQL
+- **Database**: H2 (embedded, in-memory by default, zero install) with a schema that ports to PostgreSQL
 - **Frontend**: Angular 17 + Angular Material, standalone components with lazy routes
 - **Auth**: JWT-based stateless authentication
 - **API**: REST with pagination, whitelisted sorting, structured error responses
@@ -88,6 +88,9 @@ approximated.
 
 ## Known gaps
 
-- **Not deployed.** The assessment asks for deployed software; this runs locally via the
-  documented commands. Deployment target not yet chosen.
 - **No video demo yet.** Requested by the assessment and still outstanding.
+
+Deployment is no longer a gap: the API runs on Render (containerised via
+`backend/Dockerfile`) and the frontend on Netlify (`netlify.toml`). The free-tier
+container is ephemeral, so the database is in-memory and re-seeds on boot; see the
+Deployment section of `README.md`.
