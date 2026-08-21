@@ -24,10 +24,10 @@ jobs:
           java-version: 17
           cache: maven
 
+      # The repo only ships the Windows wrapper (mvnw.cmd), so on the ubuntu runner we
+      # use the preinstalled Maven. It reads the same pom.xml and wrapper properties.
       - name: Run tests
-        run: |
-          chmod +x mvnw
-          ./mvnw --batch-mode test
+        run: mvn --batch-mode test
 
   frontend:
     name: Frontend tests + build
