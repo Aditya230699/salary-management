@@ -117,8 +117,9 @@ and reload.
 The backend is containerised via `backend/Dockerfile`; the free-tier container is
 ephemeral, which is why the default database is in-memory and re-seeds on boot. The
 frontend deploys from `netlify.toml` (build settings, SPA redirects, security headers).
-The frontend reads the API URL from `frontend/src/environments/environment.ts`; the API
-publishes its allowed origins via `CORS_ALLOWED_ORIGINS`.
+The frontend reads the API URL from `frontend/src/environments/environment.prod.ts`; the
+API always allows the localhost dev origin and the Netlify origin (hard-coded in
+`CorsConfig`), and `CORS_ALLOWED_ORIGINS` can add further origins.
 
 ## API Endpoints
 
